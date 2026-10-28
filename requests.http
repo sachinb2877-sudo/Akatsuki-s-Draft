@@ -1,0 +1,329 @@
+### ================================================================
+### Akatsuki's Draft — HTTP Requests Collection
+### VS Code REST Client (humao.rest-client)
+### ================================================================
+### Usage: Install the "REST Client" extension in VS Code.
+###        Click "Send Request" above each block.
+###        Update @token and @adminToken after logging in.
+### ================================================================
+
+@baseUrl = http://localhost:5000
+
+### --- Variables (update after login) ---
+@token = YOUR_USER_TOKEN_HERE
+@adminToken = YOUR_ADMIN_TOKEN_HERE
+@postId = YOUR_POST_ID_HERE
+@pendingPostId = YOUR_PENDING_POST_ID_HERE
+
+### ================================================================
+### HEALTH CHECK
+### ================================================================
+
+### Health Check
+GET {{baseUrl}}/health
+
+### ================================================================
+### AUTHENTICATION
+### ================================================================
+
+### Register a regular user
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Naruto Uzumaki",
+  "email": "naruto@konoha.dev",
+  "password": "ramen123"
+}
+
+### Register an admin user (only works when ALLOW_ADMIN_SIGNUP=true)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Pain Leader",
+  "email": "pain@akatsuki.dev",
+  "password": "admin123",
+  "role": "admin"
+}
+
+### ❌ Register — duplicate email (409)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Naruto Clone",
+  "email": "naruto@konoha.dev",
+  "password": "shadow123"
+}
+
+### ❌ Register — missing fields (400)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "nobody@test.dev"
+}
+
+### ❌ Register — short password (400)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Short Pass",
+  "email": "short@test.dev",
+  "password": "123"
+}
+
+### Login as regular user
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "naruto@konoha.dev",
+  "password": "ramen123"
+}
+
+### Login as admin (seeded or registered)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@akatsuki.dev",
+  "password": "admin123"
+}
+
+### ❌ Login — wrong password (401)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "naruto@konoha.dev",
+  "password": "wrongpassword"
+}
+
+### ❌ Login — non-existent user (401)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "nobody@void.dev",
+  "password": "doesntmatter"
+}
+
+### Get current user profile
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+### ❌ Get me — no token (401)
+GET {{baseUrl}}/auth/me
+
+### ❌ Get me — invalid token (401)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer invalid.token.here
+
+### ================================================================
+### POSTS (User)
+### ================================================================
+
+### Create a post (draft — default)
+POST {{baseUrl}}/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Understanding Chakra Control",
+  "description": "A guide to mastering chakra",
+  "content": "Chakra control is the ability to extract and release chakra from every tenketsu in one's body. This is an essential skill for all shinobi. In this article we explore the fundamentals of chakra control including tree walking, water walking, and advanced medical ninjutsu applications.",
+  "category": "ninjutsu",
+  "image": "https://example.com/chakra.jpg"
+}
+
+### Create a post (set to pending)
+POST {{baseUrl}}/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "The History of the Hidden Leaf",
+  "content": "Konohagakure was founded by Hashirama Senju and Madara Uchiha. The village has a rich history spanning many generations of powerful shinobi.",
+  "category": "history",
+  "status": "pending"
+}
+
+### ❌ Create post — invalid status (400)
+POST {{baseUrl}}/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Trying to sneak approved",
+  "content": "Should fail",
+  "status": "approved"
+}
+
+### ❌ Create post — no auth (401)
+POST {{baseUrl}}/posts
+Content-Type: application/json
+
+{
+  "title": "No Auth Post",
+  "content": "This should fail"
+}
+
+### ❌ Create post — missing title (400)
+POST {{baseUrl}}/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "content": "No title provided"
+}
+
+### Get all approved posts (public — no auth needed)
+GET {{baseUrl}}/posts
+
+### Get approved posts with pagination
+GET {{baseUrl}}/posts?page=1&limit=5
+
+### Get approved posts filtered by category
+GET {{baseUrl}}/posts?category=ninjutsu
+
+### Search approved posts by title
+GET {{baseUrl}}/posts?search=chakra
+
+### Combined: search + category + pagination
+GET {{baseUrl}}/posts?search=history&category=history&page=1&limit=10
+
+### Get my posts (all statuses)
+GET {{baseUrl}}/posts/my-posts
+Authorization: Bearer {{token}}
+
+### ❌ Get my posts — no auth (401)
+GET {{baseUrl}}/posts/my-posts
+
+### Get a single approved post by ID
+GET {{baseUrl}}/posts/{{postId}}
+
+### ❌ Get post — invalid ID format (400)
+GET {{baseUrl}}/posts/not-a-valid-id
+
+### ❌ Get post — valid ObjectId but doesn't exist (404)
+GET {{baseUrl}}/posts/507f1f77bcf86cd799439011
+
+### ❌ Get post — exists but not approved (404)
+### (Use a draft/pending post ID here)
+GET {{baseUrl}}/posts/{{postId}}
+
+### Update own post
+PATCH {{baseUrl}}/posts/{{postId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Understanding Chakra Control — Updated",
+  "content": "Updated content with more details about chakra nature transformation.",
+  "status": "pending"
+}
+
+### ❌ Update post — not owner (403)
+### (Use the admin token to try updating a user's post)
+PATCH {{baseUrl}}/posts/{{postId}}
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "title": "Admin trying to edit user's post"
+}
+
+### ❌ Update post — try to set status to "approved" (400)
+PATCH {{baseUrl}}/posts/{{postId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "approved"
+}
+
+### Delete own post
+DELETE {{baseUrl}}/posts/{{postId}}
+Authorization: Bearer {{token}}
+
+### ❌ Delete post — not owner (403)
+DELETE {{baseUrl}}/posts/{{postId}}
+Authorization: Bearer {{adminToken}}
+
+### ================================================================
+### ADMIN
+### ================================================================
+
+### Get all pending posts (admin only)
+GET {{baseUrl}}/admin/posts/pending
+Authorization: Bearer {{adminToken}}
+
+### ❌ Get pending posts — non-admin user (403)
+GET {{baseUrl}}/admin/posts/pending
+Authorization: Bearer {{token}}
+
+### ❌ Get pending posts — no auth (401)
+GET {{baseUrl}}/admin/posts/pending
+
+### Approve a pending post
+PATCH {{baseUrl}}/admin/posts/approve/{{pendingPostId}}
+Authorization: Bearer {{adminToken}}
+
+### ❌ Approve — not a pending post (400)
+### (Use an already approved or draft post ID)
+PATCH {{baseUrl}}/admin/posts/approve/{{postId}}
+Authorization: Bearer {{adminToken}}
+
+### Reject a pending post (with reason)
+PATCH {{baseUrl}}/admin/posts/reject/{{pendingPostId}}
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "reason": "Content does not meet our quality guidelines. Please revise and resubmit."
+}
+
+### Reject a pending post (without reason)
+PATCH {{baseUrl}}/admin/posts/reject/{{pendingPostId}}
+Authorization: Bearer {{adminToken}}
+
+### ❌ Reject — not a pending post (400)
+PATCH {{baseUrl}}/admin/posts/reject/{{postId}}
+Authorization: Bearer {{adminToken}}
+
+### ❌ Admin routes — user tries to approve (403)
+PATCH {{baseUrl}}/admin/posts/approve/{{pendingPostId}}
+Authorization: Bearer {{token}}
+
+### ================================================================
+### AI IMPROVEMENT
+### ================================================================
+
+### Improve own post with AI
+POST {{baseUrl}}/ai/improve/{{postId}}
+Authorization: Bearer {{token}}
+
+### ❌ Improve — not owner (403)
+POST {{baseUrl}}/ai/improve/{{postId}}
+Authorization: Bearer {{adminToken}}
+
+### ❌ Improve — invalid ID (400)
+POST {{baseUrl}}/ai/improve/not-a-valid-id
+Authorization: Bearer {{token}}
+
+### ❌ Improve — post doesn't exist (404)
+POST {{baseUrl}}/ai/improve/507f1f77bcf86cd799439011
+Authorization: Bearer {{token}}
+
+### ❌ Improve — no auth (401)
+POST {{baseUrl}}/ai/improve/{{postId}}
+
+### ================================================================
+### UNKNOWN ROUTE (404)
+### ================================================================
+
+### ❌ Unknown route (404)
+GET {{baseUrl}}/some/unknown/route
